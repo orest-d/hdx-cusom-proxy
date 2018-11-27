@@ -5,6 +5,11 @@ from io import BytesIO
 import os.path
 import urllib.request
 import urllib.error
+import logging
+import sys, imp
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 MIMETYPES = dict(
     json="application/json",
@@ -36,11 +41,15 @@ class FunctionNotFound(NotFound):
 
 def get_code(repo, module):
     if repo == "builtin":
+        logger.info("Get builtin repo")
         if module == "test":
+            logger.info("Get module test")
             return """
 def hello(*arg):
     return "Hello, world"
 
+def indirect_hello(*arg):
+    return "Indirect "+hello()
 
 def echo(repo, module, name, extension, request):
     return ",\\n".join((repo, module, name, extension, repr(request.args)))
@@ -50,13 +59,14 @@ def pandas_test(*arg):
     import pandas
     return pd.DataFrame(dict(a=[1, 2, 3], b=[4, 5, 6]))
 
-
 def error(*arg):
     raise Exception("Test error")
 """
     if repo == "local":
         try:
-            return open(os.path.join(LOCAL_PROXIES_PATH,module+".py")).read()
+            path = os.path.join(LOCAL_PROXIES_PATH,module+".py")
+            logger.info("Get module "+path)
+            return open(path).read()
         except FileNotFoundError:
             raise ModuleNotFound(repo, module)
     elif repo == "od":
@@ -77,14 +87,14 @@ def execute(code_text, repo, module, name, request):
     if not all(ch.isalnum() or ch=="_" for ch in function):
         raise Exception("Wrong function name: "+function)
 
-    extension = elements[1] if len(elements)>=2 else ""
+    extension = elements[1] if len(elements) >= 2 else ""
 
-    exec(code)
+    pymodule = imp.new_module(module)
+    exec(code, pymodule.__dict__)
     try:
-        f = eval(function)
+        f = getattr(pymodule,function)
     except NameError:
         raise FunctionNotFound(repo, module, function)
-
     
     return f(repo, module, name, extension, request)
 

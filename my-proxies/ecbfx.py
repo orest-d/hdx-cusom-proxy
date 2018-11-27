@@ -5,13 +5,56 @@ import os.path
 import io
 import pandas as pd
 
-logging.basicConfig()
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 def data_url():
-    return "file:///home/orest/PycharmProjects/hdx/hdx-ecb-reference-fx/eurofxref-hist.zip"
     return "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.zip"
+
+def index(*arg):
+    return """
+<html>
+    <head>
+        <title>HDX ECB reference FX</title>
+    </head>
+    <body>
+        <h1>HDX interface to <a href="https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html">ECB reference FX rates</a></h1>
+        Data source: %s
+
+        <ul>
+            <li><a href="original_data.zip">Original data (zip)</a></li>
+            <li><a href="original_data.csv">Original data (csv)</a></li>
+            <li><a href="original_data.xlsx">Original data (xlsx)</a></li>
+            <li><a href="data_with_hxl.csv">Data with HXL tags (csv)</a></li>
+            <li><a href="fx_rates.csv">FX rates in USD (csv)</a></li>
+        </ul>
+    </body>    
+</html>
+""" % data_url()
+
+def original_data(repo, module, name, extension, request):
+    """Proxy returning original data fetched directly from data_url()
+    Unzippin and format conversion is supported via custom_proxy.
+    """
+    if extension=="zip":
+        return raw_data()
+    else:
+        return df_content()
+
+def data_with_hxl(*arg):
+    """Data fetched from data_url() enhanced with hxl tags.
+    Unzippin and format conversion is supported via custom_proxy.
+    """
+    return add_hxl_tags(df_content())
+
+def fx_rates(repo, module, name, extension, request):
+    """Proxy returning original data fetched directly from data_url()
+    Unzippin and format conversion is supported via custom_proxy.
+    """
+    currency = request.args.get("currency","USD")
+    df = df_content()
+    df = add_base_currency(df)
+    df = convert_currency(df, currency)
+    df = add_hxl_tags(df)
+    return df
 
 def raw_data(url=None):
     url = data_url() if url is None else url

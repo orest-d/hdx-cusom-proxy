@@ -23,6 +23,7 @@ def index():
            <li>Builtin test
              <ul>
                <li><a href="p/builtin/test/hello.txt">Hello</a></li>
+               <li><a href="p/builtin/test/indirect_hello.txt">Indirect Hello</a></li>
                <li><a href="p/builtin/test/echo.txt">Echo</a></li>             
                <li>Pandas test
                  <a href="p/builtin/test/pandas_test.csv">(csv)</a>
@@ -43,3 +44,7 @@ def index():
 @app.route('/p/<string:repo>/<string:module>/<string:name>')
 def serve(repo, module, name):
     return cp.do(repo, module, name, request)
+
+@app.route('/p/<string:repo>/<string:module>')
+def serve_index(repo, module):
+    return cp.do(repo, module, "index.html", request)
