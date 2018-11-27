@@ -31,8 +31,8 @@ TEXT_MIMETYPES = "json txt htm html md tsv csv".split()
 LOCAL_PROXIES_PATH=os.path.join(os.path.split(os.path.split(__file__)[0])[0],"my-proxies")
 
 LINKS = dict(
-    od = "https://raw.githubusercontent.com/orest-d/hdx-custom-proxy/master/my-proxies/",
-    odm = "https://raw.githubusercontent.com/orest-d/hdx-custom-proxy/proxies/my-proxies/"                         
+    odm = "https://raw.githubusercontent.com/orest-d/hdx-custom-proxy/master/my-proxies/",
+    od = "https://raw.githubusercontent.com/orest-d/hdx-custom-proxy/proxies/my-proxies/"                         
 )
 
 
