@@ -5,6 +5,11 @@ from io import BytesIO
 import os.path
 import urllib.request
 import urllib.error
+import logging
+import sys, imp
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 MIMETYPES = dict(
     json="application/json",
@@ -24,7 +29,12 @@ MIMETYPES = dict(
 
 TEXT_MIMETYPES = "json txt htm html md tsv csv".split()
 LOCAL_PROXIES_PATH=os.path.join(os.path.split(os.path.split(__file__)[0])[0],"my-proxies")
-OD_PROXIES_URL = "https://raw.githubusercontent.com/orest-d/hdx-custom-proxy/master/my-proxies/"
+
+LINKS = dict(
+    od = "https://raw.githubusercontent.com/orest-d/hdx-custom-proxy/master/my-proxies/",
+    odm = "https://raw.githubusercontent.com/orest-d/hdx-custom-proxy/proxies/my-proxies/"                         
+)
+
 
 class ModuleNotFound(NotFound):
     def __init__(self,repo,module):
@@ -36,35 +46,40 @@ class FunctionNotFound(NotFound):
 
 def get_code(repo, module):
     if repo == "builtin":
+        logger.info("Get builtin repo")
         if module == "test":
+            logger.info("Get module test")
             return """
 def hello(*arg):
     return "Hello, world"
 
+def indirect_hello(*arg):
+    return "Indirect "+hello()
 
 def echo(repo, module, name, extension, request):
     return ",\\n".join((repo, module, name, extension, repr(request.args)))
 
-
 def pandas_test(*arg):
     import pandas
     return pd.DataFrame(dict(a=[1, 2, 3], b=[4, 5, 6]))
-
 
 def error(*arg):
     raise Exception("Test error")
 """
     if repo == "local":
         try:
-            return open(os.path.join(LOCAL_PROXIES_PATH,module+".py")).read()
+            path = os.path.join(LOCAL_PROXIES_PATH,module+".py")
+            logger.info("Get module "+path)
+            return open(path).read()
         except FileNotFoundError:
             raise ModuleNotFound(repo, module)
-    elif repo == "od":
+    elif repo in LINKS:
         try:
-            return urllib.request.urlopen(OD_PROXIES_URL+module+".py").read()
+            link = LINKS[repo]+module+".py"
+            logger.info("Get module "+link)
+            return urllib.request.urlopen(LINKS[repo]+module+".py").read()
         except urllib.error.HTTPError:
             raise ModuleNotFound(repo, module)
-
 
     raise ModuleNotFound(repo, module)
 
@@ -77,14 +92,14 @@ def execute(code_text, repo, module, name, request):
     if not all(ch.isalnum() or ch=="_" for ch in function):
         raise Exception("Wrong function name: "+function)
 
-    extension = elements[1] if len(elements)>=2 else ""
+    extension = elements[1] if len(elements) >= 2 else ""
 
-    exec(code)
+    pymodule = imp.new_module(module)
+    exec(code, pymodule.__dict__)
     try:
-        f = eval(function)
-    except NameError:
+        f = getattr(pymodule,function)
+    except AttributeError:
         raise FunctionNotFound(repo, module, function)
-
     
     return f(repo, module, name, extension, request)
 
