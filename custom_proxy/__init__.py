@@ -1,6 +1,35 @@
-class ModuleNotFound(Exception):
+from flask import Response, send_file
+from werkzeug.exceptions import NotFound
+import pandas as pd
+from io import BytesIO
+import os.path
+
+MIMETYPES = dict(
+    json="application/json",
+    txt= 'text/plain',
+    html= 'text/html',
+    htm= 'text/html',
+    md = 'text/markdown',
+    xls = 'application/vnd.ms-excel',
+    xlsx = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    ods = 'application/vnd.oasis.opendocument.spreadsheet',
+    tsv='text/tab-separated-values',
+    csv = 'text/csv',
+    msgpack = 'application/x-msgpack',
+    hdf5 = 'application/x-hdf',
+    h5 = 'application/x-hdf'
+)
+
+TEXT_MIMETYPES = "json txt htm html md tsv csv".split()
+LOCAL_PROXIES_PATH=os.path.join(os.path.split(os.path.split(__file__)[0])[0],"my-proxies")
+
+class ModuleNotFound(NotFound):
     def __init__(self,repo,module):
-        Exception.__init__("Module %(repo)s/%(module)s not found"%locals())
+        NotFound.__init__(self, "Module %(repo)s/%(module)s not found"%locals())
+
+class FunctionNotFound(NotFound):
+    def __init__(self,repo,module, function):
+        NotFound.__init__(self, "Function %(function)s not found in module %(repo)s/%(module)s"%locals())
 
 def get_code(repo, module):
     if repo == "builtin":
@@ -11,8 +40,17 @@ def hello(*arg):
 
 def echo(repo, module, name, extension, request):
     return ",\\n".join((repo, module, name, extension))
-"""    
-    raise ModuleNotFound(repo,module)
+    
+def pandas_test(*arg):
+    import pandas
+    return pd.DataFrame(dict(a=[1,2,3],b=[4,5,6]))
+"""
+    if repo == "local":
+        try:
+            return open(os.path.join(LOCAL_PROXIES_PATH,module+".py")).read()
+        except FileNotFoundError:
+            raise ModuleNotFound(repo, module)
+    raise ModuleNotFound(repo, module)
 
 def execute(code_text, repo, module, name, request):
     module_filename = "%(repo)s/%(module)s.py"%locals()
@@ -26,10 +64,49 @@ def execute(code_text, repo, module, name, request):
     extension = elements[1] if len(elements)>=2 else ""
 
     exec(code)
-    f = eval(function)
+    try:
+        f = eval(function)
+    except NameError:
+        raise FunctionNotFound(repo, module, function)
+
     
     return f(repo, module, name, extension, request)
 
 def do(repo, module, name, request):
+    elements = name.split(".")
+    function = elements[0]
+    extension = elements[1] if len(elements)>=2 else ""
     code_text = get_code(repo, module)
-    return execute(code_text, repo, module, name, request)
+
+    result = execute(code_text, repo, module, name, request)
+
+    mimetype = MIMETYPES.get(extension,"text/plain")
+    if isinstance(result,pd.DataFrame):
+        df = result
+        if extension == "csv":
+            return Response(df.to_csv(index=False), mimetype=mimetype)
+        if extension == "tsv":
+            return Response(df.to_csv(index=False, sep="\t"), mimetype=mimetype)
+        if extension == "json":
+            return Response(df.to_json(index=False, orient="table"), mimetype=mimetype)
+        if extension in ("html", "htm"):
+            return Response(df.to_html(index=False), mimetype=mimetype)
+        if extension == "xlsx":
+            output = BytesIO()
+            writer = pd.ExcelWriter(output, engine='xlsxwriter')
+            df.to_excel(writer,function)
+            writer.close()
+            output.seek(0)
+            return send_file(output, attachment_filename=name, as_attachment=True)
+        if extension == "msgpack":
+            output = BytesIO()
+            df.to_msgpack(output)
+            output.seek(0)
+            return send_file(output, attachment_filename=name, as_attachment=True)
+        return Response(df.to_csv(index=False), mimetype=mimetype)
+
+    if isinstance(result,str):
+        if extension in TEXT_MIMETYPES:
+            return Response(result, mimetype=mimetype)
+
+    return result
