@@ -32,6 +32,7 @@ def index():
                  <a href="p/builtin/test/pandas_test.msgpack">(msgpack)</a>
                  <a href="p/builtin/test/pandas_test.xlsx">(xlsx)</a>
                </li>
+               <li><a href="p/builtin/test/error.txt">Error</a></li>             
              </ul>
            </li>
         </ul>

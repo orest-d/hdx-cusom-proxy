@@ -3,6 +3,8 @@ from werkzeug.exceptions import NotFound
 import pandas as pd
 from io import BytesIO
 import os.path
+import urllib.request
+import urllib.error
 
 MIMETYPES = dict(
     json="application/json",
@@ -22,6 +24,7 @@ MIMETYPES = dict(
 
 TEXT_MIMETYPES = "json txt htm html md tsv csv".split()
 LOCAL_PROXIES_PATH=os.path.join(os.path.split(os.path.split(__file__)[0])[0],"my-proxies")
+OD_PROXIES_URL = "https://raw.githubusercontent.com/orest-d/hdx-custom-proxy/master/my-proxies/"
 
 class ModuleNotFound(NotFound):
     def __init__(self,repo,module):
@@ -38,18 +41,31 @@ def get_code(repo, module):
 def hello(*arg):
     return "Hello, world"
 
+
 def echo(repo, module, name, extension, request):
-    return ",\\n".join((repo, module, name, extension))
-    
+    return ",\\n".join((repo, module, name, extension, repr(request.args)))
+
+
 def pandas_test(*arg):
     import pandas
-    return pd.DataFrame(dict(a=[1,2,3],b=[4,5,6]))
+    return pd.DataFrame(dict(a=[1, 2, 3], b=[4, 5, 6]))
+
+
+def error(*arg):
+    raise Exception("Test error")
 """
     if repo == "local":
         try:
             return open(os.path.join(LOCAL_PROXIES_PATH,module+".py")).read()
         except FileNotFoundError:
             raise ModuleNotFound(repo, module)
+    elif repo == "od":
+        try:
+            return urllib.request.urlopen(OD_PROXIES_URL+module+".py").read()
+        except urllib.error.HTTPError:
+            raise ModuleNotFound(repo, module)
+
+
     raise ModuleNotFound(repo, module)
 
 def execute(code_text, repo, module, name, request):
