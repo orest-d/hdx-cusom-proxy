@@ -29,7 +29,12 @@ MIMETYPES = dict(
 
 TEXT_MIMETYPES = "json txt htm html md tsv csv".split()
 LOCAL_PROXIES_PATH=os.path.join(os.path.split(os.path.split(__file__)[0])[0],"my-proxies")
-OD_PROXIES_URL = "https://raw.githubusercontent.com/orest-d/hdx-custom-proxy/master/my-proxies/"
+
+LINKS = dict(
+    od = "https://raw.githubusercontent.com/orest-d/hdx-custom-proxy/master/my-proxies/",
+    odm = "https://raw.githubusercontent.com/orest-d/hdx-custom-proxy/proxies/my-proxies/"                         
+)
+
 
 class ModuleNotFound(NotFound):
     def __init__(self,repo,module):
@@ -54,7 +59,6 @@ def indirect_hello(*arg):
 def echo(repo, module, name, extension, request):
     return ",\\n".join((repo, module, name, extension, repr(request.args)))
 
-
 def pandas_test(*arg):
     import pandas
     return pd.DataFrame(dict(a=[1, 2, 3], b=[4, 5, 6]))
@@ -69,12 +73,13 @@ def error(*arg):
             return open(path).read()
         except FileNotFoundError:
             raise ModuleNotFound(repo, module)
-    elif repo == "od":
+    elif repo in LINKS:
         try:
-            return urllib.request.urlopen(OD_PROXIES_URL+module+".py").read()
+            link = LINKS[repo]+module+".py"
+            logger.info("Get module "+link)
+            return urllib.request.urlopen(LINKS[repo]+module+".py").read()
         except urllib.error.HTTPError:
             raise ModuleNotFound(repo, module)
-
 
     raise ModuleNotFound(repo, module)
 
@@ -93,7 +98,7 @@ def execute(code_text, repo, module, name, request):
     exec(code, pymodule.__dict__)
     try:
         f = getattr(pymodule,function)
-    except NameError:
+    except AttributeError:
         raise FunctionNotFound(repo, module, function)
     
     return f(repo, module, name, extension, request)
