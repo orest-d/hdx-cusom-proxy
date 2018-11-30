@@ -26,7 +26,7 @@ def index(*arg):
             <li><a href="data_with_hxl.csv">Data with HXL tags (csv)</a></li>
             <li><a href="fx_rates.csv">FX rates in USD (csv)</a></li>
         </ul>
-    </body>    
+    </body>
 </html>
 """ % data_url()
 
