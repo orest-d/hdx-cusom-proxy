@@ -1,5 +1,5 @@
 import logging
-from flask import Flask, Response, Blueprint, request
+from flask import Flask, Response, Blueprint, request, redirect, url_for
 import custom_proxy as cp
 
 app = Blueprint('hdxcp', __name__)
@@ -20,22 +20,8 @@ def index():
         For more info, see the <a href="https://github.com/orest-d/hdx-custom-proxy">repository</a>.
         <h4>Test</h4>
         <ul>
-           <li>Builtin test
-             <ul>
-               <li><a href="p/builtin/test/hello.txt">Hello</a></li>
-               <li><a href="p/builtin/test/indirect_hello.txt">Indirect Hello</a></li>
-               <li><a href="p/builtin/test/echo.txt">Echo</a></li>             
-               <li>Pandas test
-                 <a href="p/builtin/test/pandas_test.csv">(csv)</a>
-                 <a href="p/builtin/test/pandas_test.tsv">(tsv)</a>
-                 <a href="p/builtin/test/pandas_test.html">(html)</a>
-                 <a href="p/builtin/test/pandas_test.json">(json)</a>
-                 <a href="p/builtin/test/pandas_test.msgpack">(msgpack)</a>
-                 <a href="p/builtin/test/pandas_test.xlsx">(xlsx)</a>
-               </li>
-               <li><a href="p/builtin/test/error.txt">Error</a></li>             
-             </ul>
-           </li>
+           <li><a href="p/builtin/test">Builtin test</a></li>
+           <li><a href="p/local/test">Local test</a></li>
         </ul>
     </body>    
 </html>
@@ -47,4 +33,4 @@ def serve(repo, module, name):
 
 @app.route('/p/<string:repo>/<string:module>')
 def serve_index(repo, module):
-    return cp.do(repo, module, "index.html", request)
+    return redirect(url_for(".serve",repo=repo,module=module,name="index.html"))

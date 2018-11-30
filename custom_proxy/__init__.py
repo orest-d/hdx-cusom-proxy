@@ -1,12 +1,13 @@
 from flask import Response, send_file
 from werkzeug.exceptions import NotFound
 import pandas as pd
-from io import BytesIO
+from io import BytesIO, StringIO
 import os.path
 import urllib.request
 import urllib.error
 import logging
 import sys, imp
+import hxl
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -53,18 +54,10 @@ def get_code(repo, module):
 def hello(*arg):
     return "Hello, world"
 
-def indirect_hello(*arg):
-    return "Indirect "+hello()
-
-def echo(repo, module, name, extension, request):
-    return ",\\n".join((repo, module, name, extension, repr(request.args)))
-
-def pandas_test(*arg):
-    import pandas
-    return pd.DataFrame(dict(a=[1, 2, 3], b=[4, 5, 6]))
-
-def error(*arg):
-    raise Exception("Test error")
+def index(*arg):
+    return '''<html><body><h1>Test builtin proxy</h1>
+<a href="hello.txt">Hello</a>
+</body></html>'''
 """
     if repo == "local":
         try:
@@ -112,7 +105,13 @@ def do(repo, module, name, request):
     result = execute(code_text, repo, module, name, request)
 
     mimetype = MIMETYPES.get(extension,"text/plain")
-    if isinstance(result,pd.DataFrame):
+    if isinstance(result, hxl.Dataset):
+        if extension == "csv":
+            return Response(result.gen_csv(), mimetype='text/csv')
+        else:            
+            result = pd.read_csv(StringIO("".join(result.gen_csv())))
+
+    if isinstance(result, pd.DataFrame):
         df = result
         if extension == "csv":
             return Response(df.to_csv(index=False), mimetype=mimetype)
@@ -135,7 +134,7 @@ def do(repo, module, name, request):
             output.seek(0)
             return send_file(output, attachment_filename=name, as_attachment=True)
         return Response(df.to_csv(index=False), mimetype=mimetype)
-
+            
     if isinstance(result,str):
         if extension in TEXT_MIMETYPES:
             return Response(result, mimetype=mimetype)
