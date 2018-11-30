@@ -32,7 +32,7 @@ def index(*arg):
 
 def original_data(repo, module, name, extension, request):
     """Proxy returning original data fetched directly from data_url()
-    Unzippin and format conversion is supported via custom_proxy.
+    Unzipping and format conversion is supported via custom_proxy.
     """
     if extension=="zip":
         return raw_data()
@@ -40,15 +40,11 @@ def original_data(repo, module, name, extension, request):
         return df_content()
 
 def data_with_hxl(*arg):
-    """Data fetched from data_url() enhanced with hxl tags.
-    Unzippin and format conversion is supported via custom_proxy.
-    """
+    """Data fetched from data_url() enhanced with hxl tags."""
     return add_hxl_tags(df_content())
 
 def fx_rates(repo, module, name, extension, request):
-    """Proxy returning original data fetched directly from data_url()
-    Unzippin and format conversion is supported via custom_proxy.
-    """
+    """Proxy returning original data fetched directly from data_url()"""
     currency = request.args.get("currency","USD")
     df = df_content()
     df = add_base_currency(df)
